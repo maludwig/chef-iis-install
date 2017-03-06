@@ -21,10 +21,21 @@
 #   rights :read, 'IIS_IUSRS'
 #   recursive true
 # end
+deploydir = 'C:\Deploy'
+buildpath = deploydir + '\FvAPI2_1.0.6031.zip'
+extractdir = deploydir + '\6031'
+
+# s3region = "us-west-2"
+# s3bucket = "fieldvu-deploys"
+# s3filename = "test/FvAPI2_1.0.6031.zip"
 
 chef_gem "aws-sdk" do
   compile_time false
   action :install
+end
+
+directory deploydir do
+  action :create
 end
 
 ruby_block "download-object" do
@@ -44,8 +55,16 @@ ruby_block "download-object" do
     #3
     s3_client = Aws::S3::Client.new(region: s3region)
     s3_client.get_object(bucket: s3bucket,
-                         key: s3filename,
-                         response_target: 'C:\inetpub\wwwroot\default.htm')
+      key: s3filename,
+      response_target: buildpath)
   end
   action :run
+end
+
+powershell_script 'Unzip primary build artefact' do
+  code '
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    [System.IO.Compression.ZipFile]::ExtractToDirectory("%s", "%s")
+  ' % [buildpath, extractdir]
+  guard_interpreter :powershell_script
 end
