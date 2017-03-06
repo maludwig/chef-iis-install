@@ -17,7 +17,7 @@ template 'c:\inetpub\wwwroot\Default.htm' do # ~FC033
   source 'Default.htm.erb'
 end
 
-directory 'c:\ISSSite' do
+directory 'c:\IISSite' do
   rights :read, 'IIS_IUSRS'
   recursive true
 end

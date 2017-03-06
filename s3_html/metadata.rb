@@ -1,0 +1,7 @@
+name 's3_html'
+maintainer 'The Authors'
+maintainer_email 'you@example.com'
+license 'all_rights'
+description 'Installs/Configures s3_html'
+long_description 'Installs/Configures s3_html'
+version '0.1.0'
