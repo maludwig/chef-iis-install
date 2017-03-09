@@ -59,6 +59,8 @@ ruby_block "download-object" do
       response_target: buildpath)
   end
   action :run
+  guard_interpreter :powershell_script
+  not_if "Test-Path " + deploydir + buildpath
 end
 
 powershell_script 'Unzip primary build artefact' do
@@ -67,6 +69,7 @@ powershell_script 'Unzip primary build artefact' do
     [System.IO.Compression.ZipFile]::ExtractToDirectory("%s", "%s")
   ' % [buildpath, extractdir]
   guard_interpreter :powershell_script
+  not_if "Test-Path " + extractdir
 end
 
 
