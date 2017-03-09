@@ -21,6 +21,9 @@
 #   rights :read, 'IIS_IUSRS'
 #   recursive true
 # end
+query = Chef::Search::Query.new
+app = query.search(:aws_opsworks_app, "type:other").first
+
 deploydir = 'C:\Deploy'
 buildpath = deploydir + '\FvAPI2_1.0.6031.zip'
 extractdir = deploydir + '\6031'
@@ -46,8 +49,6 @@ ruby_block "download-object" do
     Aws.config[:ssl_ca_bundle] = 'C:\ProgramData\Git\bin\curl-ca-bundle.crt'
 
     #2
-    query = Chef::Search::Query.new
-    app = query.search(:aws_opsworks_app, "type:other").first
     s3region = app[0][:environment][:S3REGION]
     s3bucket = app[0][:environment][:BUCKET]
     s3filename = app[0][:environment][:FILENAME]
@@ -77,7 +78,10 @@ require 'json'
 template 'c:\inetpub\wwwroot\Default.htm' do
   source 'Default.htm.erb'
   variables(
-    :nodejson => JSON.pretty_generate(node)
+    :nodejson => {
+      :node => JSON.pretty_generate(node),
+      :app => JSON.pretty_generate(app)
+    }
   )
 end
 
