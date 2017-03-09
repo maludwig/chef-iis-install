@@ -21,9 +21,6 @@
 #   rights :read, 'IIS_IUSRS'
 #   recursive true
 # end
-query = Chef::Search::Query.new
-app = query.search(:aws_opsworks_app, "type:other").first
-
 deploydir = 'C:\Deploy'
 buildpath = deploydir + '\FvAPI2_1.0.6031.zip'
 extractdir = deploydir + '\6031'
@@ -41,17 +38,28 @@ directory deploydir do
   action :create
 end
 
+query = Chef::Search::Query.new
+app = query.search(:aws_opsworks_app, "type:other").first
+
+require 'aws-sdk'
+Aws.use_bundled_cert!
+
+#2
+s3region = app[0][:environment][:S3REGION]
+s3bucket = app[0][:environment][:BUCKET]
+s3filename = app[0][:environment][:FILENAME]
+
+db_arn = app[0][:data_sources][:arn]
+rds = Aws::RDS::Resource.new(region: 'us-west-2')
+rds.db_instances.each do |i|
+  if i.db_instance_arn === db_arn
+    db_fqdn = i.endpoint.address
+  end
+end
+
 ruby_block "download-object" do
   block do
-    require 'aws-sdk'
 
-    #1
-    Aws.config[:ssl_ca_bundle] = 'C:\ProgramData\Git\bin\curl-ca-bundle.crt'
-
-    #2
-    s3region = app[0][:environment][:S3REGION]
-    s3bucket = app[0][:environment][:BUCKET]
-    s3filename = app[0][:environment][:FILENAME]
 
     #3
     s3_client = Aws::S3::Client.new(region: s3region)
@@ -78,13 +86,24 @@ require 'json'
 template 'c:\inetpub\wwwroot\Default.htm' do
   source 'Default.htm.erb'
   variables(
-    :nodejson => {
-      :node => JSON.pretty_generate(node),
-      :app => JSON.pretty_generate(app)
-    }
+    :nodejson => JSON.pretty_generate({
+      :node => node,
+      :app => app
+    })
+  )
+end
+
+template 'c:\Deploy\FvApi2.SetParameters.xml' do
+  source 'FvApi2.SetParameters.xml.erb'
+  
+  variables(
+    :dbfqdn => db_fqdn
   )
 end
 
 file 'c:\inetpub\wwwroot\node.json' do
-  content JSON.pretty_generate(node)
+  content JSON.pretty_generate({
+      :node => node,
+      :app => app
+    })
 end
