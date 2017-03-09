@@ -49,57 +49,57 @@ s3region = app[0][:environment][:S3REGION]
 s3bucket = app[0][:environment][:BUCKET]
 s3filename = app[0][:environment][:FILENAME]
 
-db_arn = app[0][:data_sources][:arn]
-rds = Aws::RDS::Resource.new(region: 'us-west-2')
-rds.db_instances.each do |i|
-  if i.db_instance_arn === db_arn
-    db_fqdn = i.endpoint.address
-  end
-end
+# db_arn = app[0][:data_sources][:arn]
+# rds = Aws::RDS::Resource.new(region: 'us-west-2')
+# rds.db_instances.each do |i|
+#   if i.db_instance_arn === db_arn
+#     db_fqdn = i.endpoint.address
+#   end
+# end
 
-ruby_block "download-object" do
-  block do
-
-
-    #3
-    s3_client = Aws::S3::Client.new(region: s3region)
-    s3_client.get_object(bucket: s3bucket,
-      key: s3filename,
-      response_target: buildpath)
-  end
-  action :run
-  guard_interpreter :powershell_script
-  not_if "Test-Path " + deploydir + buildpath
-end
-
-powershell_script 'Unzip primary build artefact' do
-  code '
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    [System.IO.Compression.ZipFile]::ExtractToDirectory("%s", "%s")
-  ' % [buildpath, extractdir]
-  guard_interpreter :powershell_script
-  not_if "Test-Path " + extractdir
-end
+# ruby_block "download-object" do
+#   block do
 
 
-require 'json'
-template 'c:\inetpub\wwwroot\Default.htm' do
-  source 'Default.htm.erb'
-  variables(
-    :nodejson => JSON.pretty_generate({
-      :node => node,
-      :app => app
-    })
-  )
-end
+#     #3
+#     s3_client = Aws::S3::Client.new(region: s3region)
+#     s3_client.get_object(bucket: s3bucket,
+#       key: s3filename,
+#       response_target: buildpath)
+#   end
+#   action :run
+#   guard_interpreter :powershell_script
+#   not_if "Test-Path " + deploydir + buildpath
+# end
 
-template 'c:\Deploy\FvApi2.SetParameters.xml' do
-  source 'FvApi2.SetParameters.xml.erb'
+# powershell_script 'Unzip primary build artefact' do
+#   code '
+#     Add-Type -AssemblyName System.IO.Compression.FileSystem
+#     [System.IO.Compression.ZipFile]::ExtractToDirectory("%s", "%s")
+#   ' % [buildpath, extractdir]
+#   guard_interpreter :powershell_script
+#   not_if "Test-Path " + extractdir
+# end
+
+
+# require 'json'
+# template 'c:\inetpub\wwwroot\Default.htm' do
+#   source 'Default.htm.erb'
+#   variables(
+#     :nodejson => JSON.pretty_generate({
+#       :node => node,
+#       :app => app
+#     })
+#   )
+# end
+
+# template 'c:\Deploy\FvApi2.SetParameters.xml' do
+#   source 'FvApi2.SetParameters.xml.erb'
   
-  variables(
-    :dbfqdn => db_fqdn
-  )
-end
+#   variables(
+#     :dbfqdn => db_fqdn
+#   )
+# end
 
 file 'c:\inetpub\wwwroot\node.json' do
   content JSON.pretty_generate({
