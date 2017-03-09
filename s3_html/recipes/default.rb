@@ -68,3 +68,16 @@ powershell_script 'Unzip primary build artefact' do
   ' % [buildpath, extractdir]
   guard_interpreter :powershell_script
 end
+
+
+require 'json'
+template 'c:\inetpub\wwwroot\Default.htm' do
+  source 'Default.htm.erb'
+  variables(
+    :nodejson => JSON.pretty_generate(node)
+  )
+end
+
+file 'c:\inetpub\wwwroot\node.json' do
+  content JSON.pretty_generate(node)
+end
