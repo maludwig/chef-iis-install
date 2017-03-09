@@ -21,6 +21,8 @@
 #   rights :read, 'IIS_IUSRS'
 #   recursive true
 # end
+require 'json'
+
 deploydir = 'C:\Deploy'
 buildpath = deploydir + '\FvAPI2_1.0.6031.zip'
 extractdir = deploydir + '\6031'
@@ -49,13 +51,25 @@ s3region = app[0][:environment][:S3REGION]
 s3bucket = app[0][:environment][:BUCKET]
 s3filename = app[0][:environment][:FILENAME]
 
-db_arn = app[0][:raw_data][:data_sources][0][:arn]
+log 'test'
+first_app = app[0]
+log JSON.generate(first_app)
+raw_data = first_app[:raw_data]
+log JSON.generate(raw_data)
+sources = raw_data[:data_sources]
+log JSON.generate(sources)
+first_source = sources[0]
+log JSON.generate(first_source)
+db_arn = first_source[:arn]
+log JSON.generate(db_arn)
+
 rds = Aws::RDS::Resource.new(region: 'us-west-2')
 rds.db_instances.each do |i|
   if i.db_instance_arn === db_arn
     db_fqdn = i.endpoint.address
   end
 end
+log JSON.generate(db_fqdn)
 
 # ruby_block "download-object" do
 #   block do
