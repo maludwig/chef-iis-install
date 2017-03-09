@@ -49,13 +49,13 @@ s3region = app[0][:environment][:S3REGION]
 s3bucket = app[0][:environment][:BUCKET]
 s3filename = app[0][:environment][:FILENAME]
 
-# db_arn = app[0][:data_sources][:arn]
-# rds = Aws::RDS::Resource.new(region: 'us-west-2')
-# rds.db_instances.each do |i|
-#   if i.db_instance_arn === db_arn
-#     db_fqdn = i.endpoint.address
-#   end
-# end
+db_arn = app[0][:raw_data][:data_sources][0][:arn]
+rds = Aws::RDS::Resource.new(region: 'us-west-2')
+rds.db_instances.each do |i|
+  if i.db_instance_arn === db_arn
+    db_fqdn = i.endpoint.address
+  end
+end
 
 # ruby_block "download-object" do
 #   block do
@@ -104,6 +104,7 @@ s3filename = app[0][:environment][:FILENAME]
 file 'c:\inetpub\wwwroot\node.json' do
   content JSON.pretty_generate({
       :node => node,
-      :app => app
+      :app => app,
+      :fqdn => db_fqdn
     })
 end
