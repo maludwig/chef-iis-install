@@ -3,24 +3,7 @@
 # Recipe:: default
 #
 # Copyright (c) 2016 The Authors, All Rights Reserved.
-# powershell_script 'Install Web Server (IIS) and dependencies' do
-#   code 'Add-WindowsFeature Web-Server,Web-WebServer,Web-Common-Http,Web-Default-Doc,Web-Dir-Browsing,Web-Http-Errors,Web-Static-Content,Web-Health,Web-Http-Logging,Web-Performance,Web-Stat-Compression,Web-Security,Web-Filtering,Web-App-Dev,Web-Net-Ext45,Web-ASP,Web-Asp-Net45,Web-ISAPI-Ext,Web-ISAPI-Filter,Web-Mgmt-Tools,Web-Mgmt-Console,NET-Framework-45-Features,NET-Framework-45-Core,NET-Framework-45-ASPNET'
-#   guard_interpreter :powershell_script
-#   not_if '(Get-WindowsFeature -Name Web-Server).Installed'
-# end
 
-# service 'w3svc' do
-#   action [:enable, :start]
-# end
-
-# template 'c:\inetpub\wwwroot\Default.htm' do # ~FC033
-#   source 'Default.htm.erb'
-# end
-
-# directory 'c:\IISSite' do
-#   rights :read, 'IIS_IUSRS'
-#   recursive true
-# end
 require 'json'
 
 deploydir = 'C:\Deploy'
@@ -42,106 +25,46 @@ end
 
 query = Chef::Search::Query.new
 app = query.search(:aws_opsworks_app, "type:other").first
-
-require 'aws-sdk'
-Aws.use_bundled_cert!
-
-#2
-s3region = app[0][:environment][:S3REGION]
-s3bucket = app[0][:environment][:BUCKET]
-s3filename = app[0][:environment][:FILENAME]
-
-puts "blah"
-
-log 'my log messsage' do
-  level :info
-end
-
-log 'test' do
-  message 'this is a test'
-end
-
 db_arn = app[0][:data_sources][0][:arn]
 db_fqdn = db_arn.split(":")[-1] + ".cj5atnrr02kw.us-west-2.rds.amazonaws.com"
-# log JSON.generate(db_arn)
+    s3region = app[0][:environment][:S3REGION]
+    s3bucket = app[0][:environment][:BUCKET]
+    s3filename = app[0][:environment][:FILENAME]
 
-# file 'c:\inetpub\wwwroot\node.json' do
-#   content JSON.pretty_generate({
-#       :node => node,
-#       :app => app,
-#       :db_arn => db_arn
-#     })
-# end
+ruby_block "download-objects" do
+  block do
+    require 'aws-sdk'
+    Aws.use_bundled_cert!
 
-# rds = Aws::RDS::Resource.new(region: 'us-west-2')
-# rds.db_instances.each do |i|
-#   # File.new('c:\boo.txt', "a") { |file| file.write(i.db_instance_arn + ": " + i.endpoint.address + "\r\n")}
-#   puts i.db_instance_arn + ": " + i.endpoint.address + "\r\n"
-#   if i.db_instance_arn === db_arn
-#     db_fqdn = i.endpoint.address
-#     # File.new('c:\boo.txt', "a") { |file| file.write("Found endpoint" + i.db_instance_arn + ": " + i.endpoint.address + "\r\n")}
-#     puts "Found endpoint" + i.db_instance_arn + ": " + i.endpoint.address + "\r\n"
-#   end
-# end
-puts db_fqdn
+    s3_client = Aws::S3::Client.new(region: s3region)
+    s3_client.get_object(
+      bucket: s3bucket,
+      key: s3filename,
+      response_target: buildpath
+      )
+    s3_client.get_object(
+      bucket: s3bucket,
+      key: 'WebDeploy_amd64_en-US.msi',
+      response_target: deploydir + '\WebDeploy_amd64_en-US.msi'
+      )
+  end
+  action :run
+  guard_interpreter :powershell_script
+  not_if "Test-Path " + buildpath
+end
 
-# file 'c:\inetpub\wwwroot\node.json' do
-#   content JSON.pretty_generate({
-#       :node => node,
-#       :app => app,
-#       :db_arn => db_arn,
-#       :db_fqdn => db_fqdn
-#     })
-# end
+powershell_script 'Unzip primary build artefact' do
+  code '
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    [System.IO.Compression.ZipFile]::ExtractToDirectory("%s", "%s")
+  ' % [buildpath, extractdir]
+  guard_interpreter :powershell_script
+  not_if "Test-Path " + extractdir
+end
 
-# ruby_block "download-object" do
-#   block do
-
-
-#     #3
-#     s3_client = Aws::S3::Client.new(region: s3region)
-#     s3_client.get_object(bucket: s3bucket,
-#       key: s3filename,
-#       response_target: buildpath)
-#   end
-#   action :run
-#   guard_interpreter :powershell_script
-#   not_if "Test-Path " + deploydir + buildpath
-# end
-
-# powershell_script 'Unzip primary build artefact' do
-#   code '
-#     Add-Type -AssemblyName System.IO.Compression.FileSystem
-#     [System.IO.Compression.ZipFile]::ExtractToDirectory("%s", "%s")
-#   ' % [buildpath, extractdir]
-#   guard_interpreter :powershell_script
-#   not_if "Test-Path " + extractdir
-# end
-
-
-# require 'json'
-# template 'c:\inetpub\wwwroot\Default.htm' do
-#   source 'Default.htm.erb'
-#   variables(
-#     :nodejson => JSON.pretty_generate({
-#       :node => node,
-#       :app => app
-#     })
-#   )
-# end
-
-# template 'c:\Deploy\FvApi2.SetParameters.xml' do
-#   source 'FvApi2.SetParameters.xml.erb'
-  
-#   variables(
-#     :dbfqdn => db_fqdn
-#   )
-# end
-
-# file 'c:\inetpub\wwwroot\node.json' do
-#   content JSON.pretty_generate({
-#       :node => node,
-#       :app => app,
-#       :fqdn => db_fqdn
-#     })
-# end
+template extractdir + '\FvApi2.SetParameters.xml' do
+  source 'FvApi2.SetParameters.xml.erb'
+  variables(
+    :dbfqdn => db_fqdn
+  )
+end
