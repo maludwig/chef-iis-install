@@ -51,25 +51,48 @@ s3region = app[0][:environment][:S3REGION]
 s3bucket = app[0][:environment][:BUCKET]
 s3filename = app[0][:environment][:FILENAME]
 
-log 'test'
-first_app = app[0]
-log JSON.generate(first_app)
-raw_data = first_app[:raw_data]
-log JSON.generate(raw_data)
-sources = raw_data[:data_sources]
-log JSON.generate(sources)
-first_source = sources[0]
-log JSON.generate(first_source)
-db_arn = first_source[:arn]
-log JSON.generate(db_arn)
+puts "blah"
 
-rds = Aws::RDS::Resource.new(region: 'us-west-2')
-rds.db_instances.each do |i|
-  if i.db_instance_arn === db_arn
-    db_fqdn = i.endpoint.address
-  end
+log 'my log messsage' do
+  level :info
 end
-log JSON.generate(db_fqdn)
+
+log 'test' do
+  message 'this is a test'
+end
+
+db_arn = app[0][:data_sources][0][:arn]
+db_fqdn = db_arn.split(":")[-1] + ".cj5atnrr02kw.us-west-2.rds.amazonaws.com"
+# log JSON.generate(db_arn)
+
+# file 'c:\inetpub\wwwroot\node.json' do
+#   content JSON.pretty_generate({
+#       :node => node,
+#       :app => app,
+#       :db_arn => db_arn
+#     })
+# end
+
+# rds = Aws::RDS::Resource.new(region: 'us-west-2')
+# rds.db_instances.each do |i|
+#   # File.new('c:\boo.txt', "a") { |file| file.write(i.db_instance_arn + ": " + i.endpoint.address + "\r\n")}
+#   puts i.db_instance_arn + ": " + i.endpoint.address + "\r\n"
+#   if i.db_instance_arn === db_arn
+#     db_fqdn = i.endpoint.address
+#     # File.new('c:\boo.txt', "a") { |file| file.write("Found endpoint" + i.db_instance_arn + ": " + i.endpoint.address + "\r\n")}
+#     puts "Found endpoint" + i.db_instance_arn + ": " + i.endpoint.address + "\r\n"
+#   end
+# end
+puts db_fqdn
+
+# file 'c:\inetpub\wwwroot\node.json' do
+#   content JSON.pretty_generate({
+#       :node => node,
+#       :app => app,
+#       :db_arn => db_arn,
+#       :db_fqdn => db_fqdn
+#     })
+# end
 
 # ruby_block "download-object" do
 #   block do
@@ -115,10 +138,10 @@ log JSON.generate(db_fqdn)
 #   )
 # end
 
-file 'c:\inetpub\wwwroot\node.json' do
-  content JSON.pretty_generate({
-      :node => node,
-      :app => app,
-      :fqdn => db_fqdn
-    })
-end
+# file 'c:\inetpub\wwwroot\node.json' do
+#   content JSON.pretty_generate({
+#       :node => node,
+#       :app => app,
+#       :fqdn => db_fqdn
+#     })
+# end
