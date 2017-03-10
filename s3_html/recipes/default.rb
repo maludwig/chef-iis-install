@@ -10,6 +10,15 @@ deploydir = 'C:\Deploy'
 buildpath = deploydir + '\FvAPI2_1.0.6031.zip'
 extractdir = deploydir + '\6031'
 
+query = Chef::Search::Query.new
+app = query.search(:aws_opsworks_app, "type:other").first
+db_arn = app[0][:data_sources][0][:arn]
+db_fqdn = db_arn.split(":")[-1] + ".cj5atnrr02kw.us-west-2.rds.amazonaws.com"
+
+s3region = app[0][:environment][:S3REGION]
+s3bucket = app[0][:environment][:BUCKET]
+s3filename = app[0][:environment][:FILENAME]
+
 # s3region = "us-west-2"
 # s3bucket = "fieldvu-deploys"
 # s3filename = "test/FvAPI2_1.0.6031.zip"
@@ -22,14 +31,6 @@ end
 directory deploydir do
   action :create
 end
-
-query = Chef::Search::Query.new
-app = query.search(:aws_opsworks_app, "type:other").first
-db_arn = app[0][:data_sources][0][:arn]
-db_fqdn = db_arn.split(":")[-1] + ".cj5atnrr02kw.us-west-2.rds.amazonaws.com"
-    s3region = app[0][:environment][:S3REGION]
-    s3bucket = app[0][:environment][:BUCKET]
-    s3filename = app[0][:environment][:FILENAME]
 
 ruby_block "download-objects" do
   block do
@@ -53,7 +54,7 @@ ruby_block "download-objects" do
   not_if "Test-Path " + buildpath
 end
 
-powershell_script 'Unzip primary build artefact' do
+powershell_script 'Unzip primary build artifact' do
   code '
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     [System.IO.Compression.ZipFile]::ExtractToDirectory("%s", "%s")
@@ -67,4 +68,15 @@ template extractdir + '\FvApi2.SetParameters.xml' do
   variables(
     :dbfqdn => db_fqdn
   )
+end
+
+windows_package 'WebDeploy3' do
+  action :install
+  source deploydir + '\WebDeploy_amd64_en-US.msi'
+  options 'ADDLOCAL=ALL /qn /norestart'
+end
+
+execute 'Deploy Site' do
+  cwd extractdir
+  command 'FvApi2.deploy.cmd /Y'
 end
